@@ -3,6 +3,7 @@ module github.com/urmaps/z-gormlib
 go 1.24.3
 
 require (
+	github.com/joho/godotenv v1.5.1
 	gorm.io/driver/postgres v1.5.11
 	gorm.io/gorm v1.25.10
 )
@@ -17,4 +18,4 @@ require (
 	golang.org/x/crypto v0.17.0 // indirect
 	golang.org/x/sync v0.1.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
-) 
+)
