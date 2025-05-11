@@ -14,6 +14,7 @@ type Config struct {
 	User            string
 	Password        string
 	Database        string
+	SSLMode         string
 	MaxIdleConns    int
 	MaxOpenConns    int
 	ConnMaxLifetime time.Duration
@@ -32,6 +33,7 @@ func NewConfig() *Config {
 		User:            getEnv("DB_USER", "postgres"),
 		Password:        getEnv("DB_PASSWORD", "postgres"),
 		Database:        getEnv("DB_NAME", "oauth"),
+		SSLMode:         getEnv("DB_SSLMODE", "disable"),
 		MaxIdleConns:    maxIdleConns,
 		MaxOpenConns:    maxOpenConns,
 		ConnMaxLifetime: connMaxLifetime,
@@ -40,8 +42,8 @@ func NewConfig() *Config {
 
 // DSN retourne la chaîne de connexion PostgreSQL
 func (c *Config) DSN() string {
-	return fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
-		c.Host, c.Port, c.User, c.Password, c.Database)
+	return fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
+		c.Host, c.Port, c.User, c.Password, c.Database, c.SSLMode)
 }
 
 // getEnv récupère une variable d'environnement avec une valeur par défaut
