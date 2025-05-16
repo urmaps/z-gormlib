@@ -6,6 +6,7 @@ import (
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
+	"gorm.io/gorm/schema"
 )
 
 // Connection représente une connexion à la base de données
@@ -18,6 +19,9 @@ func NewConnection(config *Config) (*Connection, error) {
 	// Configuration du logger GORM
 	gormConfig := &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Info),
+		NamingStrategy: schema.NamingStrategy{
+			TablePrefix: fmt.Sprintf("%s.", config.Schema),
+		},
 	}
 
 	// Connexion à la base de données
@@ -35,6 +39,11 @@ func NewConnection(config *Config) (*Connection, error) {
 	sqlDB.SetMaxIdleConns(config.MaxIdleConns)
 	sqlDB.SetMaxOpenConns(config.MaxOpenConns)
 	sqlDB.SetConnMaxLifetime(config.ConnMaxLifetime)
+
+	// Définir le schéma par défaut
+	if err := db.Exec("SET search_path TO ?", config.Schema).Error; err != nil {
+		return nil, fmt.Errorf("erreur lors de la configuration du schéma: %v", err)
+	}
 
 	return &Connection{db: db}, nil
 }
