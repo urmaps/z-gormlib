@@ -41,7 +41,7 @@ func NewConnection(config *Config) (*Connection, error) {
 	sqlDB.SetConnMaxLifetime(config.ConnMaxLifetime)
 
 	// Définir le schéma par défaut
-	if err := db.Exec("SET search_path TO ?", config.Schema).Error; err != nil {
+	if err := db.Exec(fmt.Sprintf("SET search_path TO %s", config.Schema)).Error; err != nil {
 		return nil, fmt.Errorf("erreur lors de la configuration du schéma: %v", err)
 	}
 
