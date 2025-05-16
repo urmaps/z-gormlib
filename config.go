@@ -14,6 +14,7 @@ type Config struct {
 	User            string
 	Password        string
 	Database        string
+	Schema          string
 	SSLMode         string
 	MaxIdleConns    int
 	MaxOpenConns    int
@@ -33,6 +34,7 @@ func NewConfig() *Config {
 		User:            getEnv("DB_USER", "postgres"),
 		Password:        getEnv("DB_PASSWORD", "postgres"),
 		Database:        getEnv("DB_NAME", "oauth"),
+		Schema:          getEnv("DB_SCHEMA", "public"),
 		SSLMode:         getEnv("DB_SSLMODE", "disable"),
 		MaxIdleConns:    maxIdleConns,
 		MaxOpenConns:    maxOpenConns,
@@ -42,8 +44,8 @@ func NewConfig() *Config {
 
 // DSN retourne la chaîne de connexion PostgreSQL
 func (c *Config) DSN() string {
-	return fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
-		c.Host, c.Port, c.User, c.Password, c.Database, c.SSLMode)
+	return fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s search_path=%s sslmode=%s",
+		c.Host, c.Port, c.User, c.Password, c.Database, c.Schema, c.SSLMode)
 }
 
 // getEnv récupère une variable d'environnement avec une valeur par défaut
@@ -99,4 +101,4 @@ const (
 
 	// DefaultDirMode est le mode par défaut pour les dossiers de migration
 	DefaultDirMode = 0755
-) 
+)

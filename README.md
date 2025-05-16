@@ -71,15 +71,36 @@ if err := migrator.RunMigrations(migrations...); err != nil {
 
 ### Configuration
 
+La configuration peut être faite via des variables d'environnement :
+
+```bash
+DB_HOST=localhost              # Hôte de la base de données
+DB_PORT=5432                  # Port de la base de données
+DB_USER=postgres              # Nom d'utilisateur
+DB_PASSWORD=postgres          # Mot de passe
+DB_NAME=oauth                 # Nom de la base de données
+DB_SCHEMA=public             # Schéma PostgreSQL à utiliser (par défaut: public)
+DB_SSLMODE=disable           # Mode SSL
+DB_MAX_IDLE_CONNS=10         # Nombre maximum de connexions inactives
+DB_MAX_OPEN_CONNS=100        # Nombre maximum de connexions ouvertes
+DB_CONN_MAX_LIFETIME=1h      # Durée de vie maximum d'une connexion
+```
+
+Exemple de configuration en code :
+
 ```go
 // Configuration par défaut
 config := gormlib.DefaultConfig()
 
 // Configuration personnalisée
 config := gormlib.NewConfig()
+config.Schema = "mon_schema"      // Définir un schéma spécifique
 config.SetTableName("custom_migrations")
 config.SetLockTimeout(30)
 ```
+
+**Note pour les utilisateurs de PGO Crunchy Data :** 
+Par défaut, PGO crée un schéma spécifique pour chaque utilisateur. Pour utiliser le bon schéma, assurez-vous de définir la variable d'environnement `DB_SCHEMA` avec le nom de votre schéma utilisateur.
 
 ### Création de Migrations
 

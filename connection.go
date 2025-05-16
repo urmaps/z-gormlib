@@ -2,6 +2,7 @@ package gormlib
 
 import (
 	"fmt"
+
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -50,4 +51,4 @@ func (c *Connection) Close() error {
 		return fmt.Errorf("erreur lors de la récupération de la connexion SQL: %v", err)
 	}
 	return sqlDB.Close()
-} 
+}

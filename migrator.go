@@ -2,8 +2,9 @@ package gormlib
 
 import (
 	"context"
-	"gorm.io/gorm"
 	"time"
+
+	"gorm.io/gorm"
 )
 
 // Migrator gère les migrations de la base de données
@@ -147,4 +148,4 @@ func (m *Migrator) GetPendingMigrations(availableMigrations []Migration) ([]Migr
 	}
 
 	return pending, nil
-} 
+}
