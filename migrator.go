@@ -30,7 +30,7 @@ func (m *Migrator) RunMigrations(migrations ...Migration) error {
 	defer cancel()
 
 	// Créer la table des migrations si elle n'existe pas
-	if err := m.db.AutoMigrate(&MigrationRecord{}); err != nil {
+	if err := m.db.WithContext(ctx).AutoMigrate(&MigrationRecord{}); err != nil {
 		return NewMigrationError("create migrations table", err)
 	}
 

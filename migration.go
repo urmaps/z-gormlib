@@ -18,4 +18,4 @@ type MigrationRecord struct {
 	ID        uint      `gorm:"primaryKey"`
 	Name      string    `gorm:"uniqueIndex;not null"`
 	AppliedAt time.Time `gorm:"not null"`
-} 
+}
