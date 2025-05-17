@@ -6,17 +6,20 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 )
 
 // MigrationDiscovery gère la découverte automatique des migrations
 type MigrationDiscovery struct {
 	MigrationsDir string
+	registry      *MigrationRegistry
 }
 
 // NewMigrationDiscovery crée un nouveau découvreur de migrations
 func NewMigrationDiscovery(migrationsDir string) *MigrationDiscovery {
 	return &MigrationDiscovery{
 		MigrationsDir: migrationsDir,
+		registry:      globalRegistry,
 	}
 }
 
@@ -34,82 +37,74 @@ func (d *MigrationDiscovery) DiscoverMigrations() ([]Migration, error) {
 		return nil, fmt.Errorf("erreur lors de la lecture du dossier migrations: %v", err)
 	}
 
-	var migrations []Migration
+	type migrationInfo struct {
+		migration Migration
+		timestamp time.Time
+	}
+
+	var migrationsInfo []migrationInfo
 	for _, file := range files {
 		if !file.IsDir() && strings.HasSuffix(file.Name(), ".go") {
-			// Charger le fichier de migration
-			migration, err := d.loadMigration(file.Name())
+			// Extraire le timestamp et le nom de la migration
+			timestamp, name, err := d.parseMigrationFileName(file.Name())
 			if err != nil {
-				return nil, fmt.Errorf("erreur lors du chargement de la migration %s: %v", file.Name(), err)
+				continue // Skip les fichiers qui ne suivent pas le format
 			}
+
+			// Vérifier si la migration est déjà enregistrée
+			migration := d.registry.GetMigrationByName(name)
 			if migration != nil {
-				migrations = append(migrations, migration)
+				migrationsInfo = append(migrationsInfo, migrationInfo{
+					migration: migration,
+					timestamp: timestamp,
+				})
 			}
 		}
 	}
 
-	// Trier les migrations par nom (qui contient le timestamp)
-	sort.Slice(migrations, func(i, j int) bool {
-		return migrations[i].Name() < migrations[j].Name()
+	// Trier les migrations par timestamp
+	sort.Slice(migrationsInfo, func(i, j int) bool {
+		return migrationsInfo[i].timestamp.Before(migrationsInfo[j].timestamp)
 	})
+
+	// Convertir en slice de Migration
+	migrations := make([]Migration, len(migrationsInfo))
+	for i, info := range migrationsInfo {
+		migrations[i] = info.migration
+	}
 
 	return migrations, nil
 }
 
-// loadMigration charge une migration à partir d'un fichier
-func (d *MigrationDiscovery) loadMigration(filename string) (Migration, error) {
-	// Construire le chemin complet du fichier
-	filePath := filepath.Join(d.MigrationsDir, filename)
+// parseMigrationFileName extrait le timestamp et le nom de la migration du nom de fichier
+func (d *MigrationDiscovery) parseMigrationFileName(filename string) (time.Time, string, error) {
+	// Format attendu: YYYYMMDDHHMMSS_name.go
+	base := strings.TrimSuffix(filename, ".go")
+	parts := strings.SplitN(base, "_", 2)
+	if len(parts) != 2 {
+		return time.Time{}, "", fmt.Errorf("format de nom de fichier invalide: %s", filename)
+	}
 
-	// Lire le contenu du fichier
-	content, err := os.ReadFile(filePath)
+	timestamp, err := time.Parse("20060102150405", parts[0])
 	if err != nil {
-		return nil, fmt.Errorf("erreur lors de la lecture du fichier: %v", err)
+		return time.Time{}, "", fmt.Errorf("timestamp invalide dans le nom de fichier: %s", filename)
 	}
 
-	// Extraire le nom de la structure de migration
-	// Le format attendu est: type MigrationXXXXXXXXXXXX struct{}
-	structName := extractStructName(string(content))
-	if structName == "" {
-		return nil, fmt.Errorf("structure de migration non trouvée dans %s", filename)
-	}
-
-	// Créer une instance de la migration
-	// Note: Cette partie nécessite que les migrations suivent une convention de nommage
-	// et implémentent l'interface Migration
-	migration := createMigrationInstance(structName)
-	if migration == nil {
-		return nil, fmt.Errorf("impossible de créer une instance de la migration %s", structName)
-	}
-
-	return migration, nil
+	return timestamp, base, nil
 }
 
-// extractStructName extrait le nom de la structure de migration du contenu du fichier
-func extractStructName(content string) string {
-	// Rechercher le pattern "type MigrationXXXXXXXXXXXX struct"
-	// où XXXXXXXXXXXX est un timestamp
-	lines := strings.Split(content, "\n")
-	for _, line := range lines {
-		if strings.Contains(line, "type Migration") && strings.Contains(line, "struct") {
-			parts := strings.Fields(line)
-			for _, part := range parts {
-				if strings.HasPrefix(part, "Migration") {
-					return part
-				}
-			}
-		}
+// ValidateMigrationFile vérifie si un fichier de migration est valide
+func (d *MigrationDiscovery) ValidateMigrationFile(filename string) error {
+	// Vérifier le format du nom de fichier
+	if _, _, err := d.parseMigrationFileName(filename); err != nil {
+		return err
 	}
-	return ""
-}
 
-// createMigrationInstance crée une instance de migration à partir de son nom
-func createMigrationInstance(structName string) Migration {
-	// Cette fonction doit être adaptée en fonction de la façon dont vous voulez
-	// instancier vos migrations. Une approche courante est d'utiliser un registre
-	// de constructeurs de migrations.
-	
-	// Pour l'instant, nous retournons nil car cette fonction doit être
-	// implémentée en fonction de votre architecture spécifique
+	// Vérifier que le fichier existe
+	filePath := filepath.Join(d.MigrationsDir, filename)
+	if _, err := os.Stat(filePath); err != nil {
+		return fmt.Errorf("fichier de migration non trouvé: %v", err)
+	}
+
 	return nil
-} 
+}

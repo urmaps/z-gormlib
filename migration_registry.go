@@ -1,11 +1,12 @@
 package gormlib
 
 import (
+	"fmt"
 	"sort"
 	"sync"
 )
 
-// MigrationRegistry gère l'enregistrement et la récupération des migrations
+// MigrationRegistry gère l'enregistrement et le suivi des migrations
 type MigrationRegistry struct {
 	migrations map[string]Migration
 	mu         sync.RWMutex
@@ -18,30 +19,37 @@ func NewMigrationRegistry() *MigrationRegistry {
 	}
 }
 
-// Register enregistre une nouvelle migration
+// globalRegistry est le registre global des migrations
+var globalRegistry = NewMigrationRegistry()
+
+// Register enregistre une nouvelle migration dans le registre
 func (r *MigrationRegistry) Register(migration Migration) error {
-	if migration == nil {
-		return ErrInvalidMigrationName
-	}
-
-	name := migration.Name()
-	if name == "" {
-		return ErrInvalidMigrationName
-	}
-
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
+	name := migration.Name()
+	if name == "" {
+		return fmt.Errorf("le nom de la migration ne peut pas être vide")
+	}
+
 	if _, exists := r.migrations[name]; exists {
-		return ErrMigrationAlreadyExists
+		return fmt.Errorf("une migration avec le nom %s existe déjà", name)
 	}
 
 	r.migrations[name] = migration
 	return nil
 }
 
-// GetMigrations retourne toutes les migrations enregistrées, triées par nom
-func (r *MigrationRegistry) GetMigrations() []Migration {
+// GetMigrationByName retourne une migration par son nom
+func (r *MigrationRegistry) GetMigrationByName(name string) Migration {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	return r.migrations[name]
+}
+
+// GetAllMigrations retourne toutes les migrations enregistrées, triées par nom
+func (r *MigrationRegistry) GetAllMigrations() []Migration {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
@@ -50,7 +58,6 @@ func (r *MigrationRegistry) GetMigrations() []Migration {
 		migrations = append(migrations, m)
 	}
 
-	// Trier les migrations par nom (qui contient le timestamp)
 	sort.Slice(migrations, func(i, j int) bool {
 		return migrations[i].Name() < migrations[j].Name()
 	})
@@ -58,27 +65,23 @@ func (r *MigrationRegistry) GetMigrations() []Migration {
 	return migrations
 }
 
-// GetMigration retourne une migration spécifique par son nom
-func (r *MigrationRegistry) GetMigration(name string) (Migration, error) {
-	if name == "" {
-		return nil, ErrInvalidMigrationName
-	}
-
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	if migration, exists := r.migrations[name]; exists {
-		return migration, nil
-	}
-	return nil, ErrMigrationNotFound
+// RegisterGlobal enregistre une migration dans le registre global
+func RegisterGlobal(migration Migration) error {
+	return globalRegistry.Register(migration)
 }
 
-// HasMigration vérifie si une migration existe
-func (r *MigrationRegistry) HasMigration(name string) bool {
-	if name == "" {
-		return false
-	}
+// GetGlobalMigrationByName retourne une migration du registre global par son nom
+func GetGlobalMigrationByName(name string) Migration {
+	return globalRegistry.GetMigrationByName(name)
+}
 
+// GetAllGlobalMigrations retourne toutes les migrations du registre global
+func GetAllGlobalMigrations() []Migration {
+	return globalRegistry.GetAllMigrations()
+}
+
+// HasMigration vérifie si une migration existe dans le registre
+func (r *MigrationRegistry) HasMigration(name string) bool {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
@@ -86,10 +89,11 @@ func (r *MigrationRegistry) HasMigration(name string) bool {
 	return exists
 }
 
-// Clear vide le registre de migrations
+// Clear vide le registre de migrations (utile pour les tests)
 func (r *MigrationRegistry) Clear() {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+
 	r.migrations = make(map[string]Migration)
 }
 
@@ -97,5 +101,6 @@ func (r *MigrationRegistry) Clear() {
 func (r *MigrationRegistry) Count() int {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
+
 	return len(r.migrations)
-} 
+}
