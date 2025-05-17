@@ -72,6 +72,9 @@ type MigrationConfig struct {
 
 	// AutoCreateDir indique si le dossier des migrations doit être créé automatiquement
 	AutoCreateDir bool
+
+	// Schema est le schéma dans lequel créer la table des migrations
+	Schema string
 }
 
 // DefaultConfig retourne la configuration par défaut
@@ -80,8 +83,9 @@ func DefaultConfig() *MigrationConfig {
 		BatchSize:     10,
 		Timeout:       5 * time.Minute,
 		RetryAttempts: 3,
-		TableName:     "migrations",
+		TableName:     "migration_records",
 		AutoCreateDir: true,
+		Schema:        "public",
 	}
 }
 
